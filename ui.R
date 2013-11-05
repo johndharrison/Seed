@@ -83,7 +83,8 @@ shinyUI(pageWithSidebar(
              uiOutput("pcaVariableSelection"),
              
              mainPanel(
-               plotOutput("pcaPlot", height="600px")
+               webGLOutput("pcaPlot", height="550px"),
+               plotOutput("pcaLegend", height="200px")
              )
     ),
     

@@ -372,6 +372,7 @@ shinyServer(function(input, output) {
     sidebarPanel(
       numericInput("pcX", "Principal component X:", 1),
       numericInput("pcY", "Principal component Y:", 2), 
+      numericInput("pcZ", "Principal component Z:", 3),
       selectInput("pcaColorVariable", "Color variable:", choices = colnames(allData())),
       radioButtons("pcaColorType", "Color options:", 
                    list("Unique" = "unique",
@@ -404,6 +405,7 @@ shinyServer(function(input, output) {
         sliderInput("pcaMarBottom", "Bottom margin", min=0.01, max=10.01, value=5.1),
         textInput("pcaXlab", "X label", value=paste("Principal component ", input$pcX, " (", pcaPV()[input$pcX], "%)", sep="")),
         textInput("pcaYlab", "Y label", value=paste("Principal component ", input$pcY, " (", pcaPV()[input$pcY], "%)", sep="")),
+        textInput("pcaYlab", "Z label", value=paste("Principal component ", input$pcZ, " (", pcaPV()[input$pcZ], "%)", sep="")),
         textInput("pcaTitle", "Title", value=paste("Scatter plot of principal components")),
         textInput("pcaKeyTitle", "Legend title", value=input$pcaColorVariable),
         sliderInput("pcaKeyFontSize", "Legend font size", min=0.01, max=3.01, value=1.5),
@@ -430,34 +432,46 @@ shinyServer(function(input, output) {
   pcY<-reactive({
     pcaObject()[,input$pcY]
   })
+  pcZ<-reactive({
+    pcaObject()[,input$pcZ]
+  })
   # % variation explained
   pcaPV<-reactive({
     vars<-apply(pcaObject(), 2, sd)^2
     round(vars/sum(vars)*100, digits=2)
   })
-  # generate PCA plot
-  plotPca <- function(){
-    layout(matrix(c(1,2,1,2),ncol=2), height = c(4,1),width = c(4,4))
-    par(mar=c(input$pcaMarBottom,input$pcaMarLeft,input$pcaMarTop,input$pcaMarRight))
-    
+
+  pcaCVlist<-reactive({
     colorVariable<-which(colnames(allData())==input$pcaColorVariable)
     CVlist<-getColor(allData()[,colorVariable], type=input$pcaColorType, numCat=input$npcaColorCat)
-    colorV <- CVlist[[1]]
-    valueV <- CVlist[[2]]
-    plot(pcX(), pcY(), 
-         xlab=input$pcaXlab, 
-         ylab=input$pcaYlab, 
-         main=input$pcaTitle,
+    CVlist
+  })
+  # generate PCA plot
+  plotPca <- function(){
+    colorV <- pcaCVlist()[[1]]
+    valueV <- pcaCVlist()[[2]]
+    spheres3d(pcX(), pcY(), pcZ(),
          col=colorV,
-         cex.axis=input$pcaFontSize, cex.main=input$pcaFontSize, cex.lab=input$pcaFontSize
+         cex.axis=input$pcaFontSize, cex.main=input$pcaFontSize, cex.lab=input$pcaFontSize, radius=0.01
     )
-    plotLegend(colorV, valueV, gradient=(input$pcaColorType=="gradient"), 
-               title=input$pcaKeyTitle, min=min(as.numeric(valueV), na.rm=T), 
-               max=max(as.numeric(valueV), na.rm=T), cex=input$pcaKeyFontSize, keyCol=input$pcaKeyColumns
+    axes3d(xlab=input$pcaXlab, 
+           ylab=input$pcaYlab, 
+           zlab=input$pcaZlab,
+           main=input$pcaTitle
     )
+
   }
 
-  # sacce PCA plot
+  plotPCAlegend<-function(){
+      colorV <- pcaCVlist()[[1]]
+      valueV <- pcaCVlist()[[2]]
+      plotLegend(colorV, valueV, gradient=(input$pcaColorType=="gradient"), 
+                 title=input$pcaKeyTitle, min=min(as.numeric(valueV), na.rm=T), 
+                 max=max(as.numeric(valueV), na.rm=T), cex=input$pcaKeyFontSize, keyCol=input$pcaKeyColumns
+      )
+  }
+
+  # save PCA plot
   output$savePca <- downloadHandler(
     filename = function() { paste("PCAplot", fileExtension(), sep=".") },
     content = function(filename) {
@@ -482,8 +496,12 @@ shinyServer(function(input, output) {
   )
 
   # display PCA plot
-  output$pcaPlot <- renderPlot({
+  output$pcaPlot <- renderWebGL({
     plotPca()
+  })
+
+  output$pcaLegend <- renderPlot({
+    plotPCAlegend()
   })
   
 #####################################################################################################
@@ -1023,7 +1041,8 @@ shinyServer(function(input, output) {
          ylab=input$stackedbarYlab,
          main=input$stackedbarTitle,
          border=NA, cex.axis=input$stackedbarFontSize, cex.names=input$stackedbarFontSize, 
-         cex.lab=input$stackedbarFontSize, cex.main=input$stackedbarFontSize
+         cex.lab=input$stackedbarFontSize, cex.main=input$stackedbarFontSize,
+         las=3
     )
     plotLegend(colorV, valueV, gradient=F, cex=input$stackedbarKeyFontSize, 
                keyCol=input$stackedbarKeyColumns)
