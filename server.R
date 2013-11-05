@@ -5,6 +5,8 @@ library(shiny)
 library(vegan)
 library(WGCNA)
 library(gplots)
+library(shinyRGL)
+library(rgl)
 
 shinyServer(function(input, output) {
 
@@ -398,11 +400,7 @@ shinyServer(function(input, output) {
       checkboxInput("pcaPlotOptions", "Show plot options"),
       conditionalPanel(
         condition = "input.pcaPlotOptions == true",
-        sliderInput("pcaFontSize", "Font size", min=0.01, max=3.01, value=1.5),
-        sliderInput("pcaMarLeft", "Left margin", min=0.01, max=10.01, value=4.1),
-        sliderInput("pcaMarRight", "Right margin", min=0.01, max=10.01, value=2.1),
-        sliderInput("pcaMarTop", "Top margin", min=0.01, max=10.01, value=4.1),
-        sliderInput("pcaMarBottom", "Bottom margin", min=0.01, max=10.01, value=5.1),
+        sliderInput("pcaSphereRadius", "Point size", min=0.001, max=5.001, value=1),
         textInput("pcaXlab", "X label", value=paste("Principal component ", input$pcX, " (", pcaPV()[input$pcX], "%)", sep="")),
         textInput("pcaYlab", "Y label", value=paste("Principal component ", input$pcY, " (", pcaPV()[input$pcY], "%)", sep="")),
         textInput("pcaYlab", "Z label", value=paste("Principal component ", input$pcZ, " (", pcaPV()[input$pcZ], "%)", sep="")),
@@ -450,14 +448,13 @@ shinyServer(function(input, output) {
   plotPca <- function(){
     colorV <- pcaCVlist()[[1]]
     valueV <- pcaCVlist()[[2]]
-    spheres3d(pcX(), pcY(), pcZ(),
-         col=colorV,
-         cex.axis=input$pcaFontSize, cex.main=input$pcaFontSize, cex.lab=input$pcaFontSize, radius=0.01
+    plot3d(pcX(), pcY(), pcZ(),
+         col=colorV, 
+         size=input$pcaSphereRadius, box=F, type="s", axes=F,
+         xlab="", ylab="", zlab=""
     )
-    axes3d(xlab=input$pcaXlab, 
-           ylab=input$pcaYlab, 
-           zlab=input$pcaZlab,
-           main=input$pcaTitle
+    axes3d(c("x", "y", "z"), labels=T, tick=F,
+           xlab=pcaPV()[input$pcX], ylab=pcaPV()[input$pcY], zlab=pcaPV()[input$pcZ]
     )
 
   }
