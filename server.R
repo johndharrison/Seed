@@ -281,6 +281,10 @@ shinyServer(function(input, output) {
     sidebarPanel(
       selectInput("variable1", "X:", choices = colnames(allData())),
       selectInput("variable2", "Y:", choices = colnames(allData())),
+      conditionalPanel(
+         condition = 'input.scatterTab == "3dscatter"',
+         selectInput("variable3", "Z:", choices = colnames(allData()))
+      ),
       selectInput("scatterColorVariable", "Color variable:", choices = colnames(allData())),
       radioButtons("scatterColorType", "Color options:", 
                   list("Unique" = "unique",
@@ -293,7 +297,10 @@ shinyServer(function(input, output) {
       ),
       HTML('<br><br><br>'),
       HTML('<div align="right">'),
-      downloadButton("saveScatter", "Save Plot"),
+      conditionalPanel(
+         condition = 'input.scatterTab == "2dscatter"',
+         downloadButton("saveScatter", "Save Plot")
+      ),
       HTML('</div>'),
       uiOutput("scatterPlotOptions")
     )
@@ -305,13 +312,21 @@ shinyServer(function(input, output) {
       conditionalPanel(
         condition = "input.scatterPlotOptions == true",
         sliderInput("scatterFontSize", "Font size", min=0.01, max=3.01, value=1.5),
-        sliderInput("scatterMarLeft", "Left margin", min=0.01, max=10.01, value=4.1),
-        sliderInput("scatterMarRight", "Right margin", min=0.01, max=10.01, value=2.1),
-        sliderInput("scatterMarTop", "Top margin", min=0.01, max=10.01, value=4.1),
-        sliderInput("scatterMarBottom", "Bottom margin", min=0.01, max=10.01, value=5.1),
+        sliderInput("scatterPointSize", "Point size", min=0.01, max=3.01, value=1.0),
+        conditionalPanel(
+           condition = 'input.scatterTab == "2dscatter"',
+           sliderInput("scatterMarLeft", "Left margin", min=0.01, max=10.01, value=4.1),
+           sliderInput("scatterMarRight", "Right margin", min=0.01, max=10.01, value=2.1),
+           sliderInput("scatterMarTop", "Top margin", min=0.01, max=10.01, value=4.1),
+           sliderInput("scatterMarBottom", "Bottom margin", min=0.01, max=10.01, value=5.1),
+           textInput("scatterTitle", "Title", value=paste("Scatterplot of", input$variable2, "vs.", input$variable1, sep=" "))
+        ),
         textInput("scatterXlab", "X label", value=input$variable1),
         textInput("scatterYlab", "Y label", value=input$variable2),
-        textInput("scatterTitle", "Title", value=paste("Scatterplot of", input$variable2, "vs.", input$variable1, sep=" ")),
+        conditionalPanel(
+           condition = 'input.scatterTab == "3dscatter"',
+           textInput("scatterZlab", "Z label", value=input$variable3)
+        ),
         textInput("scatterKeyTitle", "Legend title", value=input$scatterColorVariable),
         sliderInput("scatterKeyFontSize", "Legend font size", min=0.01, max=3.01, value=1.5),
         sliderInput("scatterKeyColumns", "Number of legend columns", min=1, max=15, value=3)
@@ -320,21 +335,54 @@ shinyServer(function(input, output) {
     )
   })
 
+  scatterCVlist<-reactive({
+     colorVariable<-which(colnames(allData())==input$scatterColorVariable)
+     CVlist <- getColor(allData()[,colorVariable], type=input$scatterColorType, numCat=input$nscatterColorCat)
+     CVlist
+  })
+
+  scatterX<-reactive({
+     as.numeric(allData()[,which(colnames(allData())==input$variable1)])
+  })
+
+  scatterY<-reactive({
+     as.numeric(allData()[,which(colnames(allData())==input$variable2)])
+  })
+
+  scatterZ<-reactive({
+     as.numeric(allData()[,which(colnames(allData())==input$variable3)])
+  })
+
+  plotScatter3d<-function(){
+     plot3d(scatterX(), scatterY(), scatterZ(), xlab=input$scatterXlab, ylab=input$scatterYlab,
+            zlab=input$scatterZlab, size=input$scatterPointSize, type="s",
+            col=scatterCVlist()[[1]], box=F
+     )
+  }
+
+  plotScatter3dLegend<-function(){
+      colorV <- scatterCVlist()[[1]]
+      valueV <- scatterCVlist()[[2]]
+      plotLegend(colorV, valueV, gradient=(input$scatterColorType=="gradient"), 
+                 title=input$scatterKeyTitle, min=min(as.numeric(valueV), na.rm=T), 
+                 max=max(as.numeric(valueV), na.rm=T), cex=input$scatterKeyFontSize, keyCol=input$scatterKeyColumns
+      )
+  }
+
   # generate scatter plot
   plotScatter<-function(){
     layout(matrix(c(1,2,1,2),ncol=2), height = c(4,1),width = c(4,4))
     par(mar=c(input$scatterMarBottom,input$scatterMarLeft,input$scatterMarTop,input$scatterMarRight))
-    colorVariable<-which(colnames(allData())==input$scatterColorVariable)
-    CVlist <- getColor(allData()[,colorVariable], type=input$scatterColorType, numCat=input$nscatterColorCat)
-    colorV <- CVlist[[1]]
-    valueV <- CVlist[[2]]
-    plot(as.numeric(allData()[,which(colnames(allData())==input$variable1)]), 
-         as.numeric(allData()[,which(colnames(allData())==input$variable2)]), 
+    colorV <- scatterCVlist()[[1]]
+    valueV <- scatterCVlist()[[2]]
+    plot(scatterX(), 
+         scatterY(), 
          xlab=input$scatterXlab, 
          ylab=input$scatterYlab, 
          main=input$scatterTitle,
-         col=colorV,
-         cex.axis=input$scatterFontSize, cex.main=input$scatterFontSize, cex.lab=input$scatterFontSize
+         col=colorV, pch="O",
+         cex.axis=input$scatterFontSize, cex.main=input$scatterFontSize, 
+         cex.lab=input$scatterFontSize, cex=input$scatterPointSize
     )
     plotLegend(colorV, valueV, gradient=(input$scatterColorType=="gradient"), 
                title=input$scatterKeyTitle, min=min(as.numeric(valueV), na.rm=T), 
@@ -364,6 +412,14 @@ shinyServer(function(input, output) {
   output$scatterPlot <- renderPlot({
     plotScatter()
   })
+
+  output$scatter3dPlot <- renderWebGL({
+    plotScatter3d()
+  })
+
+  output$scatter3dLegend <- renderPlot({
+    plotScatter3dLegend()
+  })
   
 #####################################################################################################
 ############################################## PCA ##################################################
@@ -374,7 +430,11 @@ shinyServer(function(input, output) {
     sidebarPanel(
       numericInput("pcX", "Principal component X:", 1),
       numericInput("pcY", "Principal component Y:", 2), 
-      numericInput("pcZ", "Principal component Z:", 3),
+      conditionalPanel(
+        condition = 'input.pcaTab == "3dpca"',
+        numericInput("pcZ", "Principal component Z:", 3)
+      ),
+      
       selectInput("pcaColorVariable", "Color variable:", choices = colnames(allData())),
       radioButtons("pcaColorType", "Color options:", 
                    list("Unique" = "unique",
@@ -387,8 +447,11 @@ shinyServer(function(input, output) {
       ),
       HTML('<br><br><br>'),
       HTML('<div align="right">'),
-      downloadButton("savePca", "Save Plot"),
-      HTML('<br><br>'),
+
+      conditionalPanel(
+        condition = 'input.pcaTab == "2dpca"',
+        downloadButton("savePca", "Save Plot")
+      ),
       downloadButton("savePcaEigen", "Save Eigenvectors"),
       HTML('</div>'),
       uiOutput("pcaPlotOptions")
@@ -400,11 +463,24 @@ shinyServer(function(input, output) {
       checkboxInput("pcaPlotOptions", "Show plot options"),
       conditionalPanel(
         condition = "input.pcaPlotOptions == true",
-        sliderInput("pcaSphereRadius", "Point size", min=0.001, max=5.001, value=1),
-        textInput("pcaXlab", "X label", value=paste("Principal component ", input$pcX, " (", pcaPV()[input$pcX], "%)", sep="")),
-        textInput("pcaYlab", "Y label", value=paste("Principal component ", input$pcY, " (", pcaPV()[input$pcY], "%)", sep="")),
-        textInput("pcaYlab", "Z label", value=paste("Principal component ", input$pcZ, " (", pcaPV()[input$pcZ], "%)", sep="")),
-        textInput("pcaTitle", "Title", value=paste("Scatter plot of principal components")),
+	conditionalPanel(
+	   condition = 'input.pcaTab == "2dpca"',
+           sliderInput("pcaFontSize", "Font size", min=0.01, max=3.01, value=1.5),
+           sliderInput("pcaMarLeft", "Left margin", min=0.01, max=10.01, value=4.1),
+           sliderInput("pcaMarRight", "Right margin", min=0.01, max=10.01, value=2.1),
+           sliderInput("pcaMarTop", "Top margin", min=0.01, max=10.01, value=4.1),
+           sliderInput("pcaMarBottom", "Bottom margin", min=0.01, max=10.01, value=5.1),
+           textInput("pcaTitle", "Title", value=paste("Scatter plot of principal components")),
+           textInput("pcaXlab", "X label", value=paste("Principal component ", input$pcX, " (", pcaPV()[input$pcX], "%)", sep="")),
+           textInput("pcaYlab", "Y label", value=paste("Principal component ", input$pcY, " (", pcaPV()[input$pcY], "%)", sep=""))
+
+
+        ),
+#        conditionalPanel(
+#           condition = 'input.pcaTab == "3dpca"',
+#           textInput("pcaXlab", "X label", value=paste("Principal component ", input$pcZ, " (", pcaPV()[input$pcZ], "%)", sep=""))
+#	),
+	sliderInput("pcaPointSize", "Point size", min=0.01, max=3.01, value=1),
         textInput("pcaKeyTitle", "Legend title", value=input$pcaColorVariable),
         sliderInput("pcaKeyFontSize", "Legend font size", min=0.01, max=3.01, value=1.5),
         sliderInput("pcaKeyColumns", "Number of legend columns", min=1, max=15, value=3)
@@ -445,21 +521,36 @@ shinyServer(function(input, output) {
     CVlist
   })
   # generate PCA plot
-  plotPca <- function(){
-    colorV <- pcaCVlist()[[1]]
-    valueV <- pcaCVlist()[[2]]
-    plot3d(pcX(), pcY(), pcZ(),
-         col=colorV, 
-         size=input$pcaSphereRadius, box=F, type="s", axes=F,
+  plotPca3d <- function(){
+     plot3d(pcX(), pcY(), pcZ(),
+         col=pcaCVlist()[[1]], 
+         size=input$pcaPointSize, box=F, type="s", axes=F,
          xlab="", ylab="", zlab=""
-    )
-    axes3d(c("x", "y", "z"), labels=T, tick=F,
-           xlab=pcaPV()[input$pcX], ylab=pcaPV()[input$pcY], zlab=pcaPV()[input$pcZ]
-    )
-
+     )
   }
 
-  plotPCAlegend<-function(){
+  # generate PCA plot
+  plotPca <- function(){
+    layout(matrix(c(1,2,1,2),ncol=2), height = c(4,1),width = c(4,4))
+    par(mar=c(input$pcaMarBottom,input$pcaMarLeft,input$pcaMarTop,input$pcaMarRight))
+    colorV <- pcaCVlist()[[1]]
+    valueV <- pcaCVlist()[[2]]
+    plot(pcX(), pcY(), 
+         xlab=input$pcaXlab, 
+         ylab=input$pcaYlab, 
+         main=input$pcaTitle,
+         col=colorV,pch="O",
+         cex.axis=input$pcaFontSize, cex.main=input$pcaFontSize, 
+         cex.lab=input$pcaFontSize, cex=input$pcaPointSize
+    )
+    plotLegend(colorV, valueV, gradient=(input$pcaColorType=="gradient"), 
+               title=input$pcaKeyTitle, min=min(as.numeric(valueV), na.rm=T), 
+               max=max(as.numeric(valueV), na.rm=T), cex=input$pcaKeyFontSize, keyCol=input$pcaKeyColumns
+    )
+  }
+
+
+  plotPca3dLegend<-function(){
       colorV <- pcaCVlist()[[1]]
       valueV <- pcaCVlist()[[2]]
       plotLegend(colorV, valueV, gradient=(input$pcaColorType=="gradient"), 
@@ -493,12 +584,18 @@ shinyServer(function(input, output) {
   )
 
   # display PCA plot
-  output$pcaPlot <- renderWebGL({
+  output$pcaPlot <- renderPlot({
     plotPca()
   })
 
-  output$pcaLegend <- renderPlot({
-    plotPCAlegend()
+  # display 3d PCA plot
+  output$pca3dPlot <- renderWebGL({
+    plotPca3d()
+  })
+
+  # 3d PCA legend is on different plot
+  output$pca3dLegend <- renderPlot({
+    plotPca3dLegend()
   })
   
 #####################################################################################################
@@ -978,7 +1075,9 @@ shinyServer(function(input, output) {
     sidebarPanel(
       sliderInput("numBars", "Number of taxa:", min=2, max=15, value=5),
       HTML('<br>'),
-      selectInput("stackedBarOrderVariable", "Order samples by:", choices = c("None", colnames(allData()))),
+      selectInput("stackedBarOrderVariable1", "Order samples by:", choices = c("None", colnames(allData()))),
+      selectInput("stackedBarOrderVariable2", "Secondary ordering:", choices = c("None", colnames(allData()))),
+      selectInput("stackedBarOrderVariable3", "Tertiary ordering:", choices = c("None", colnames(allData()))),
       HTML('<br><br>'),
       HTML('<div align="right">'),
       downloadButton("saveStackedbar", "Save Plot"),
@@ -1010,11 +1109,16 @@ shinyServer(function(input, output) {
   # data for stacked bar plot
   stackedData <- reactive({
       reorder<-FALSE
-      if (input$stackedBarOrderVariable != "None"){
-        sampleOrderFeature<-allData()[,which(colnames(allData())==input$stackedBarOrderVariable)]
-        sampleOrder<-order(sampleOrderFeature, decreasing=T)
-        reorder<-TRUE
-      }
+      sbov1<-input$stackedBarOrderVariable1
+      sbov2<-input$stackedBarOrderVariable2
+      sbov3<-input$stackedBarOrderVariable3
+      if (sbov1!="None") sampleOrderFeature1<-allData()[,which(colnames(allData())==sbov1)]
+      if (sbov2!="None") sampleOrderFeature2<-allData()[,which(colnames(allData())==sbov2)]
+      if (sbov3!="None") sampleOrderFeature3<-allData()[,which(colnames(allData())==sbov3)]
+      if (sbov1!="None") {sampleOrder<-order(sampleOrderFeature1, decreasing=T); reorder<-TRUE}
+      if ((sbov1!="None") & (sbov2!="None")) {sampleOrder<-order(sampleOrderFeature1, sampleOrderFeature2, decreasing=T); reorder<-TRUE}
+      if ((sbov1!="None") & (sbov2!="None") & (sbov3!="None")) {sampleOrder<-order(sampleOrderFeature1, sampleOrderFeature2, sampleOrderFeature3, decreasing=T); reorder<-TRUE}
+
       topMicrobeCols<-order(apply(microbeData(), 2, sum), decreasing=T)
       topMicrobes<-microbeData()[,topMicrobeCols[1:input$numBars]]
       otherMicrobes<-microbeData()[,topMicrobeCols[(input$numBars+1):length(topMicrobeCols)]]
@@ -1085,3 +1189,4 @@ shinyServer(function(input, output) {
 
 
 })
+

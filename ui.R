@@ -2,13 +2,19 @@
 # User interface file for shiny
 
 library(shiny)
+library(vegan)
+library(WGCNA)
+library(gplots)
+library(shinyRGL)
+library(rgl)
+
+plotHeight<-"600px"
 
 shinyUI(pageWithSidebar(
   
   # Application title
   headerPanel("microbePlot"),
-  tabsetPanel(
-    
+  tabsetPanel( 
     tabPanel("Data", 
       sidebarPanel(
         fileInput("metaFilename", "Select metadata file", accept=c('text/csv', 'text/comma-separated-values,text/plain')),
@@ -65,7 +71,7 @@ shinyUI(pageWithSidebar(
       uiOutput("histVariableSelection"),
   
       mainPanel(    
-        plotOutput("histPlot", height="600px")
+        plotOutput("histPlot", height=plotHeight)
       )
     ),
     
@@ -74,7 +80,16 @@ shinyUI(pageWithSidebar(
       uiOutput("scatterVariableSelection"),
       
       mainPanel(
-        plotOutput("scatterPlot", height="600px")
+	tabsetPanel(
+	  id="scatterTab",
+          tabPanel("2d", value="2dscatter",
+                   plotOutput("scatterPlot", height=plotHeight)
+          ),
+          tabPanel("3d", value="3dscatter",
+                   webGLOutput("scatter3dPlot", height=plotHeight),
+                   plotOutput("scatter3dLegend", height="150px")
+          )
+        )
       )
     ),
     
@@ -83,8 +98,16 @@ shinyUI(pageWithSidebar(
              uiOutput("pcaVariableSelection"),
              
              mainPanel(
-               webGLOutput("pcaPlot", height="550px"),
-               plotOutput("pcaLegend", height="200px")
+               tabsetPanel(
+                 id = "pcaTab",
+                 tabPanel("2d", value="2dpca",
+                          plotOutput("pcaPlot", height=plotHeight)
+                 ),
+                 tabPanel("3d", value="3dpca",
+                          webGLOutput("pca3dPlot", height=plotHeight),
+                          plotOutput("pca3dLegend", height="150px")
+                 )
+               )
              )
     ),
     
@@ -93,7 +116,7 @@ shinyUI(pageWithSidebar(
              uiOutput("barVariableSelection"),
              
              mainPanel(
-               plotOutput("barPlot", height="600px")
+               plotOutput("barPlot", height=plotHeight)
              )
     ),
     tabPanel("Cluster", 
@@ -103,12 +126,12 @@ shinyUI(pageWithSidebar(
                tabsetPanel(
                  id = "clusterTab",
                  tabPanel("Complete", value="complete",
-                          plotOutput("clusterPlot", height="600px")
+                          plotOutput("clusterPlot", height=plotHeight)
                  ),
                  tabPanel("Subtrees", value="subtree",
-                          plotOutput("clusterGroupPlot", height="600px")
+                          plotOutput("clusterGroupPlot", height=plotHeight)
                  )
-              )
+               )
              )
              
     ),
@@ -119,13 +142,13 @@ shinyUI(pageWithSidebar(
                tabsetPanel(
                  id="wgcnaTab",
                  tabPanel("Dendrogram", value="ndendrogram",
-                          plotOutput("dendroPlot", height="600px")
+                          plotOutput("dendroPlot", height=plotHeight)
                  ),
                  tabPanel("Heatmap", value="nheatmap",
-                          plotOutput("htmpPlot", height="600px")
+                          plotOutput("htmpPlot", height=plotHeight)
                  ),
                  tabPanel("Correlations", value="ncorrelations",
-                          plotOutput("corPlot", height="600px")
+                          plotOutput("corPlot", height=plotHeight)
                  )
                  
                )
@@ -135,14 +158,14 @@ shinyUI(pageWithSidebar(
     tabPanel("Heatmap",
       uiOutput("heatmapVariableSelection"),
       mainPanel(
-        plotOutput("heatmapPlot", height="600px")
+        plotOutput("heatmapPlot", height=plotHeight)
       )
     ),
     # stacked bar plot
     tabPanel("Stacked bar plot",
              uiOutput("stackedbarVariableSelection"),
              mainPanel(
-               plotOutput("stackedbarPlot", height="600px")
+               plotOutput("stackedbarPlot", height=plotHeight)
              )
     ),    
  
@@ -258,3 +281,4 @@ shinyUI(pageWithSidebar(
   mainPanel()
 ))
         
+
