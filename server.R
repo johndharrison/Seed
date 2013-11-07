@@ -464,6 +464,7 @@ shinyServer(function(input, output) {
       checkboxInput("pcaPlotOptions", "Show plot options"),
       conditionalPanel(
         condition = "input.pcaPlotOptions == true",
+	sliderInput("pcaPointSize", "Point size", min=0.01, max=3.01, value=1),
 	conditionalPanel(
 	   condition = 'input.pcaTab == "2dpca"',
            sliderInput("pcaFontSize", "Font size", min=0.01, max=3.01, value=1.5),
@@ -481,8 +482,7 @@ shinyServer(function(input, output) {
 #           condition = 'input.pcaTab == "3dpca"',
 #           textInput("pcaXlab", "X label", value=paste("Principal component ", input$pcZ, " (", pcaPV()[input$pcZ], "%)", sep=""))
 #	),
-	sliderInput("pcaPointSize", "Point size", min=0.01, max=3.01, value=1),
-        textInput("pcaKeyTitle", "Legend title", value=input$pcaColorVariable),
+	textInput("pcaKeyTitle", "Legend title", value=input$pcaColorVariable),
         sliderInput("pcaKeyFontSize", "Legend font size", min=0.01, max=3.01, value=1.5),
         sliderInput("pcaKeyColumns", "Number of legend columns", min=1, max=15, value=3)
         
