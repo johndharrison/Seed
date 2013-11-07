@@ -1,6 +1,7 @@
 # Created 3/6/2013 by Daniel Beck
 # Server file for shiny
 
+options(rgl.useNULL=TRUE)
 library(shiny)
 library(vegan)
 library(WGCNA)
