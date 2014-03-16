@@ -8,12 +8,13 @@ library(WGCNA)
 library(gplots)
 library(Heatplus)
 library(cluster)
+library(shinyIncubator)
 #library(ggplot2) # needed for shinyApps
 
 microbeDemo <- read.csv("./Raveletal2011microbe.csv")
 metaDemo <- read.csv("./Raveletal2011meta.csv")
 
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
 
 
 ##################################################################################################*
@@ -121,10 +122,20 @@ shinyServer(function(input, output) {
 ###################################################################################################
 ############################################# DATA ################################################
 ###################################################################################################
-  output$vennPlot <- renderPlot({          
+  output$vennPlot <- renderPlot({
+    progress <- Progress$new(session, min=1, max=3)
+    on.exit(progress$close())
+    progress$set(value = 1)
+    
+    progress$set(message = 'Ploting vennPlot',
+                 detail = 'This may take a while...')    
     par(mar=c(0,0,0,0))
     vl<-list(microbeData=row.names(inputMicrobeData()), metaData=row.names(inputMetaData()))
+ 
+    progress$set(value = 2)
     names(vl)<-c("Samples in taxa file", "Samples in metadata file")
+    progress$set(value = 3)
+    
     venn(vl)
   })
 
@@ -1377,8 +1388,21 @@ shinyServer(function(input, output) {
   )
   
   # display stacked bar plot of the requested variable
-  output$stackedBarPlot <- renderPlot(
-    plotStackedbar()
+  output$stackedBarPlot <- renderPlot({
+    progress <- Progress$new(session, min=1, max=3)
+    on.exit(progress$close())
+    progress$set(value = 1)
+    
+    progress$set(message = 'Ploting stackedBarPlot',
+                 detail = 'This may take a while...')    
+    progress$set(value = 2)
+    
+    out <- plotStackedbar()
+    
+    progress$set(value = 3)
+    
+    out
+  }
   )
 
 ###################################################################################################
